@@ -1,8 +1,8 @@
 #include "Events.h"
+#include "UI.h"
 
 
-
-void OurEventSink::HandleDialogueInputs(RE::InputEvent* const* evns) {
+void EventSink::HandleDialogueInputs(RE::InputEvent* const* evns) {
     if (!Utilities::Menu::IsOpen(RE::DialogueMenu::MENU_NAME)) return;
     for (RE::InputEvent* e = *evns; e; e = e->next) {
         if (!e) continue;
@@ -11,7 +11,7 @@ void OurEventSink::HandleDialogueInputs(RE::InputEvent* const* evns) {
     }
 }
 
-void OurEventSink::_HandleDialogueInputs(const RE::ButtonEvent* a_event) {
+void EventSink::_HandleDialogueInputs(const RE::ButtonEvent* a_event) {
     uint32_t keyMask = a_event->idCode;
     auto _device = a_event->GetDevice();
     // check if _device is supported
@@ -47,7 +47,7 @@ void OurEventSink::_HandleDialogueInputs(const RE::ButtonEvent* a_event) {
     }
 }
 
-RE::BSEventNotifyControl OurEventSink::ProcessEvent(const RE::MenuOpenCloseEvent* event,
+RE::BSEventNotifyControl EventSink::ProcessEvent(const RE::MenuOpenCloseEvent* event,
                                                     RE::BSTEventSource<RE::MenuOpenCloseEvent>*) {
     if (!event) return RE::BSEventNotifyControl::kContinue;
     if (!Modules::Dialogue::listen_auto_zoom) return RE::BSEventNotifyControl::kContinue;
@@ -74,7 +74,7 @@ RE::BSEventNotifyControl OurEventSink::ProcessEvent(const RE::MenuOpenCloseEvent
     return RE::BSEventNotifyControl::kContinue;
 }
 
-RE::BSEventNotifyControl OurEventSink::ProcessEvent(RE::InputEvent* const* evns, RE::BSTEventSource<RE::InputEvent*>*) {
+RE::BSEventNotifyControl EventSink::ProcessEvent(RE::InputEvent* const* evns, RE::BSTEventSource<RE::InputEvent*>*) {
     if (!evns) return RE::BSEventNotifyControl::kContinue;
     if (!*evns) return RE::BSEventNotifyControl::kContinue;
 
@@ -107,7 +107,7 @@ RE::BSEventNotifyControl OurEventSink::ProcessEvent(RE::InputEvent* const* evns,
     return RE::BSEventNotifyControl::kContinue;
 }
 
-RE::BSEventNotifyControl OurEventSink::ProcessEvent(const RE::BGSActorCellEvent* a_event,
+RE::BSEventNotifyControl EventSink::ProcessEvent(const RE::BGSActorCellEvent* a_event,
                                                     RE::BSTEventSource<RE::BGSActorCellEvent>*) {
 
     if (!a_event) return RE::BSEventNotifyControl::kContinue;
@@ -138,7 +138,7 @@ RE::BSEventNotifyControl OurEventSink::ProcessEvent(const RE::BGSActorCellEvent*
     return RE::BSEventNotifyControl::kContinue;
 }
 
-RE::BSEventNotifyControl OurEventSink::ProcessEvent(const SKSE::CameraEvent* a_event,
+RE::BSEventNotifyControl EventSink::ProcessEvent(const SKSE::CameraEvent* a_event,
                                                     RE::BSTEventSource<SKSE::CameraEvent>*) {
 
     if (!a_event) return RE::BSEventNotifyControl::kContinue;

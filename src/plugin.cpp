@@ -1,4 +1,5 @@
 #include "Events.h"
+#include "UI.h"
 
 bool eventsinks_added = false;
 
@@ -10,7 +11,7 @@ void OnMessage(SKSE::MessagingInterface::Message* message) {
     if (message->type == SKSE::MessagingInterface::kNewGame || message->type == SKSE::MessagingInterface::kPostLoadGame) {
         // Post-load
         if (eventsinks_added) return;
-        auto* eventsink = OurEventSink::GetSingleton();
+        auto* eventsink = EventSink::GetSingleton();
         logger::info("Adding event sink for dialogue menu zoom.");
         RE::BSInputDeviceManager::GetSingleton()->AddEventSink(eventsink);
         if (auto* ui = RE::UI::GetSingleton(); ui) {
