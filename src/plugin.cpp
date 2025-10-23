@@ -2,6 +2,7 @@
 
 bool eventsinks_added = false;
 
+// ReSharper disable once CppParameterMayBeConstPtrOrRef
 void OnMessage(SKSE::MessagingInterface::Message* message) {
     if (message->type == SKSE::MessagingInterface::kDataLoaded) {
         // Start

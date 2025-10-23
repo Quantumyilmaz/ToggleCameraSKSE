@@ -1,27 +1,4 @@
 #pragma once
-// #include <chrono>
-#include <windows.h>
-
-#include <algorithm>
-#include <codecvt>
-#include <filesystem>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <mutex>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-
-#include "SimpleIni.h"
-#include "rapidjson/document.h"
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/istreamwrapper.h>
-#include <rapidjson/error/en.h>
-#include <rapidjson/writer.h>
-#include "SKSEMCP/SKSEMenuFramework.hpp"
-#include <ClibUtil/editorID.hpp>
-
 
 namespace Utilities {
 
@@ -34,13 +11,13 @@ namespace Utilities {
 
     namespace Menu {
 
-        bool IsOpen(const std::string_view menuname);
+        bool IsOpen(std::string_view menuname);
 
     };
 
     inline uint32_t GetCombatState() { return RE::PlayerCharacter::GetSingleton()->IsInCombat(); }
 
-    inline std::string formatFloatToString(float value, int precision) {
+    inline std::string formatFloatToString(const float value, const int precision) {
         std::ostringstream out;
         out << std::fixed << std::setprecision(precision) << value;
         return out.str();
@@ -52,5 +29,5 @@ namespace Utilities {
     // Returns true if the player is a werewolf
     const bool IsWerewolf(const RE::Actor* player);
 
-    std::string kDelivery2Char(const int delivery);
+    std::string kDelivery2Char(int delivery);
 };

@@ -1,4 +1,5 @@
 #include "UI.h"
+#include "SKSEMCP/SKSEMenuFramework.hpp"
 
 void __stdcall MCP::RenderLog() {
     // add checkboxes to filter log levels
@@ -27,7 +28,7 @@ void MCP::RenderCheckBox(const std::string& title, const std::string& label, boo
     ImGui::Checkbox((label + "##" + title).c_str(), &enabled);
 }
 
-void MCP::RenderDeviceKeyCombo(const std::string& title, const std::string& label, bool& enabled, int& selected_device,
+void MCP::RenderDeviceKeyCombo(const std::string& title, const std::string& label, bool& enabled, const int& selected_device,
                                std::map<int, int>& keymap) {
     
     

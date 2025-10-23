@@ -1,4 +1,6 @@
 #include "Settings.h"
+#include <rapidjson/istreamwrapper.h>
+#include <rapidjson/writer.h>
 
 void Settings::LoadDefaults(){
 	Modules::Dialogue::LoadFeatures();
@@ -208,7 +210,7 @@ bool Modules::Combat::Is3rdP() {
     else return plyr_c->IsInThirdPerson();
 }
 
-void Modules::Combat::funcToggle(Feature& feat) {
+void Modules::Combat::funcToggle(const Feature& feat) {
     auto plyr_c = RE::PlayerCamera::GetSingleton();
     if (!plyr_c) {
 		logger::error("PlayerCamera is null.");

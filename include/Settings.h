@@ -1,6 +1,6 @@
 #pragma once
 #include <Utils.h>
-
+#include <rapidjson/document.h>
 
 //kKeyboard = 0, 
 //kMouse=1, 
@@ -104,7 +104,7 @@ namespace Modules {
 
 		bool Is3rdP();
 
-		void funcToggle(Feature& feat);
+		void funcToggle(const Feature& feat);
 
 		uint32_t CamSwitchHandling(uint32_t newstate, bool third2first, bool switch_back);
 		

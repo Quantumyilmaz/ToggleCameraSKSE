@@ -17,7 +17,7 @@ class OurEventSink : public RE::BSTEventSink<RE::MenuOpenCloseEvent>,
     RE::UI* ui = RE::UI::GetSingleton();
 
     void HandleDialogueInputs(RE::InputEvent* const* evns);
-    void _HandleDialogueInputs(RE::ButtonEvent* a_event);
+    void _HandleDialogueInputs(const RE::ButtonEvent* a_event);
 
     void InputKeyDetection(RE::ButtonEvent* a_event);
 

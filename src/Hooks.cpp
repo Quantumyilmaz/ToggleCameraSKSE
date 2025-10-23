@@ -59,7 +59,7 @@ void Combat::OnActorUpdate::thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjec
 
 
     // killmove handling
-    if (!__Killmove(a_actor)) {
+    if (!OnKillmove(a_actor)) {
         logger::trace("Killmove detected.");
         return func(a_actor, a_zPos, a_cell);
     }
@@ -68,7 +68,7 @@ void Combat::OnActorUpdate::thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjec
     int shouldToggleCombat = 0;
 
     // weapon draw handling
-    if (ToggleWeapon && (!IsMagicEquipped() || !ToggleMagicWield) && __WeaponDraw(a_actor)) {
+    if (ToggleWeapon && (!IsMagicEquipped() || !ToggleMagicWield) && OnWeaponDraw(a_actor)) {
         logger::trace("Weapon draw detected. Should toggle.");
         shouldToggleWeapon += 1;
     }
@@ -84,13 +84,13 @@ void Combat::OnActorUpdate::thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjec
     }
 
     // sneak handling
-    if (ToggleSneak && !__Sneak(a_actor)) {
+    if (ToggleSneak && !OnSneak(a_actor)) {
 		logger::trace("Sneak detected. Toggled.");
 		return func(a_actor, a_zPos, a_cell);
 	}
 
     // bow first person aiming handling
-    if (ToggleBowDraw && !__BowDraw(a_actor)) {
+    if (ToggleBowDraw && !OnBowDraw(a_actor)) {
         logger::trace("Bow draw detected. Toggled.");
         return func(a_actor, a_zPos, a_cell);
     }
@@ -107,7 +107,7 @@ void Combat::OnActorUpdate::thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjec
         ignore_L = both_hands_L ? ignore_L && spell_delivery_L == spell_delivery_R : ignore_L;
         ignore_R = both_hands_R ? ignore_R && spell_delivery_L == spell_delivery_R : ignore_R;
         bool ignore = ignore_L || ignore_R;
-        if (ToggleMagicWield && !ignore && !__MagicDraw(a_actor)) {
+        if (ToggleMagicWield && !ignore && !OnMagicDraw(a_actor)) {
             logger::trace("Magic draw detected. Toggled.");
             return func(a_actor, a_zPos, a_cell);
         }
@@ -120,7 +120,7 @@ void Combat::OnActorUpdate::thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjec
         ignore_L = both_hands_L ? ignore_L && spell_delivery_L == spell_delivery_R : ignore_L;
         ignore_R = both_hands_R ? ignore_R && spell_delivery_L == spell_delivery_R : ignore_R;
         ignore = ignore_L || ignore_R;
-        if (ToggleMagicCast && !ignore  && !__MagicCast(a_actor)) {
+        if (ToggleMagicCast && !ignore  && !OnMagicCast(a_actor)) {
             logger::trace("Magic cast detected. Toggled.");
             return func(a_actor, a_zPos, a_cell);
         }
@@ -132,7 +132,7 @@ void Combat::OnActorUpdate::thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjec
     return func(a_actor, a_zPos, a_cell);
 }
 
-bool Combat::OnActorUpdate::__Killmove(RE::Actor* a_actor) {
+bool Combat::OnActorUpdate::OnKillmove(const RE::Actor* a_actor) {
     if (a_actor->IsInKillMove()) {
         oldstate_c = 1;
         return false;
@@ -142,7 +142,7 @@ bool Combat::OnActorUpdate::__Killmove(RE::Actor* a_actor) {
     return true;
 }
 
-bool Combat::OnActorUpdate::__Sneak(RE::Actor* a_actor) {
+bool Combat::OnActorUpdate::OnSneak(const RE::Actor* a_actor) {
     const auto is_sneaking = a_actor->IsSneaking();
     if (is_sneaking == sneaked) return true;
     sneaked = is_sneaking;
@@ -158,7 +158,7 @@ bool Combat::OnActorUpdate::__Sneak(RE::Actor* a_actor) {
 	return true;
 }
 
-bool Combat::OnActorUpdate::__WeaponDraw(RE::Actor* a_actor) { 
+bool Combat::OnActorUpdate::OnWeaponDraw(RE::Actor* a_actor) { 
     auto weapon_state = static_cast<uint32_t>(a_actor->AsActorState()->GetWeaponState());
     if ((!weapon_state || weapon_state == 3) && oldstate_w != weapon_state) {
         oldstate_w = weapon_state;
@@ -167,7 +167,7 @@ bool Combat::OnActorUpdate::__WeaponDraw(RE::Actor* a_actor) {
     return false;
 }
 
-bool Combat::OnActorUpdate::__BowDraw(RE::Actor* a_actor) {
+bool Combat::OnActorUpdate::OnBowDraw(RE::Actor* a_actor) {
     auto attack_state = static_cast<uint32_t>(a_actor->AsActorState()->GetAttackState());
     bool is_3rd_p = Is3rdP();
     if (bool player_is_in_toggled_cam = ToggleBowDraw.invert ? is_3rd_p : !is_3rd_p;
@@ -183,7 +183,7 @@ bool Combat::OnActorUpdate::__BowDraw(RE::Actor* a_actor) {
     return true;
 }
 
-bool Combat::OnActorUpdate::__MagicDraw(RE::Actor* a_actor) {
+bool Combat::OnActorUpdate::OnMagicDraw(RE::Actor* a_actor) {
     auto magic_state = static_cast<uint32_t>(a_actor->AsActorState()->GetWeaponState());
     if (oldstate_m != magic_state) {
         bool is_3rd_p = Is3rdP();
@@ -200,7 +200,7 @@ bool Combat::OnActorUpdate::__MagicDraw(RE::Actor* a_actor) {
     return true;
 }
 
-bool Combat::OnActorUpdate::__MagicCast(RE::Actor*) {
+bool Combat::OnActorUpdate::OnMagicCast(RE::Actor*) {
     bool is_3rd_p = Is3rdP();
     if (bool player_is_in_toggled_cam = ToggleMagicCast.invert ? is_3rd_p : !is_3rd_p;
         !IsCasting() && player_is_in_toggled_cam && ToggleMagicCast.revert && casting_switched) {

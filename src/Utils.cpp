@@ -1,9 +1,5 @@
 #include "Utils.h"
 
-//#ifdef GetObject
-//#undef GetObject
-//#endif
-
 bool Utilities::Menu::IsOpen(const std::string_view menuname) {
     if (auto ui = RE::UI::GetSingleton()) {
         if (ui->IsMenuOpen(menuname)) return true;

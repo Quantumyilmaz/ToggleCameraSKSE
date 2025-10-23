@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Serialization.h"
 
 
@@ -32,12 +31,12 @@ namespace Combat {
         static void thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjectCELL* a_cell);
 		static inline REL::Relocation<decltype(thunk)> func;
 
-        bool __Killmove(RE::Actor* a_actor);
-        bool __WeaponDraw(RE::Actor* a_actor);
-        bool __Sneak(RE::Actor* a_actor);
-        bool __BowDraw(RE::Actor* a_actor);
-        bool __MagicDraw(RE::Actor* a_actor);
-        bool __MagicCast(RE::Actor* a_actor);
+        bool OnKillmove(const RE::Actor* a_actor);
+        bool OnWeaponDraw(RE::Actor* a_actor);
+        bool OnSneak(const RE::Actor* a_actor);
+        bool OnBowDraw(RE::Actor* a_actor);
+        bool OnMagicDraw(RE::Actor* a_actor);
+        bool OnMagicCast(RE::Actor* a_actor);
 
         inline bool sneaked = false;
 	};

@@ -6,7 +6,6 @@
     "rapidjson",
     "fast-cpp-csv-parser",
     "rsm-binary-io",
-    "simpleini",
     "spdlog",
     "xbyak",
     "rapidcsv",
@@ -14,6 +13,7 @@
     "directxtk",
     "boost-stl-interfaces",
     "clib-util",
+    "clib-utils-qtr",
     "skse-mcp"
   ],
   "overrides": [

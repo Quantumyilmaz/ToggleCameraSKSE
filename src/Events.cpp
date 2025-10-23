@@ -11,7 +11,7 @@ void OurEventSink::HandleDialogueInputs(RE::InputEvent* const* evns) {
     }
 }
 
-void OurEventSink::_HandleDialogueInputs(RE::ButtonEvent* a_event) {
+void OurEventSink::_HandleDialogueInputs(const RE::ButtonEvent* a_event) {
     uint32_t keyMask = a_event->idCode;
     auto _device = a_event->GetDevice();
     // check if _device is supported
