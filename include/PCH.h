@@ -4,3 +4,5 @@
 
 namespace logger = SKSE::log;
 using namespace std::literals;
+
+inline RE::PlayerCharacter* player = RE::PlayerCharacter::GetSingleton();

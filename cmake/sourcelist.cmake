@@ -7,4 +7,5 @@ set(sources ${sources}
 	src/Hooks.cpp
 	src/UI.cpp
 	src/Serialization.cpp
+	src/Logger.cpp
 )

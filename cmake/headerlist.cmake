@@ -7,4 +7,5 @@ set(headers ${headers}
 	include/Hooks.h
 	include/UI.h
 	include/Serialization.h
+	include/Logger.h
 )

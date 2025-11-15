@@ -1,136 +1,137 @@
 #include "Hooks.h"
+#include "Manager.h"
 
 
-void Dialogue::OnCameraUpdate::thunk(RE::TESCamera* a_camera){
-	func(a_camera);
-    if (!Modules::Dialogue::listen_gradual_zoom && !Modules::Combat::listen_gradual_zoom) return;
-    if (auto* thirdPersonState = static_cast<RE::ThirdPersonState*>(a_camera->currentState.get());
-        thirdPersonState &&
-        thirdPersonState->currentZoomOffset < -0.19f) {
-        Modules::Dialogue::listen_gradual_zoom = false;
-        Modules::Combat::listen_gradual_zoom = false;
-        RE::PlayerCamera::GetSingleton()->ForceFirstPerson();
-        Modules::Dialogue::listen_auto_zoom = true;
-    }
-	
-};
+//void Dialogue::OnCameraUpdate::thunk(RE::TESCamera* a_camera){
+//	func(a_camera);
+//    if (!Modules::Dialogue::listen_gradual_zoom && !Modules::Combat::listen_gradual_zoom) return;
+//    if (auto* thirdPersonState = static_cast<RE::ThirdPersonState*>(a_camera->currentState.get());
+//        thirdPersonState &&
+//        thirdPersonState->currentZoomOffset < -0.19f) {
+//        Modules::Dialogue::listen_gradual_zoom = false;
+//        Modules::Combat::listen_gradual_zoom = false;
+//        RE::PlayerCamera::GetSingleton()->ForceFirstPerson();
+//        Modules::Dialogue::listen_auto_zoom = true;
+//    }
+//	
+//};
 
-void Dialogue::InstallHooks() {
-    
-    auto& trampoline = SKSE::GetTrampoline();
+void Hooks::PlayerUpdateHook::Install() {
+    REL::Relocation<std::uintptr_t> vtbl{ RE::VTABLE_PlayerCharacter[0] };
+    _Update = vtbl.write_vfunc(0xAD, Update);  // 0xAD is the vtable index for Update
+}
 
-    REL::Relocation<std::uintptr_t> camFunction{REL::RelocationID(49852, 50784)};
-    OnCameraUpdate::func = trampoline.write_call<5>(camFunction.address() + REL::Relocate(0x1A6, 0x1A6), OnCameraUpdate::thunk);
+void Hooks::PlayerUpdateHook::Update(RE::PlayerCharacter* a_this, float a_delta) {
+    // Custom logic here
+    _Update(a_this, a_delta);  // Call original
 
-};
+	auto manager = Manager::GetSingleton();
+    manager->CheckCombat();
+
+
+}
 
 void Hooks::Install(){
-
-    // currently only hook is dialogue
-    auto& trampoline = SKSE::GetTrampoline();
-    trampoline.create(Dialogue::trampoline_size + Combat::trampoline_size);
-
-    Dialogue::InstallHooks();
-    Combat::InstallHooks();
-};
-
-void Combat::OnActorUpdate::thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjectCELL* a_cell) {
-    if (auto* plyr_chr = RE::PlayerCharacter::GetSingleton(); 
-        !a_actor || 
-        plyr_chr->GetGameStatsData().byCharGenFlag.any(RE::PlayerCharacter::ByCharGenFlag::kHandsBound) ||
-        plyr_chr->GetFormID() != a_actor->GetFormID() || 
-        //Utilities::IsVampireLord(plyr_chr) ||
-        Utilities::IsWerewolf(plyr_chr)) {
-        return func(a_actor, a_zPos, a_cell);
-    }
-    auto plyr_c = RE::PlayerCamera::GetSingleton();
-    if (!plyr_c->IsInFirstPerson() && !plyr_c->IsInThirdPerson()) return func(a_actor, a_zPos, a_cell);
-    auto thirdPersonState =
-        static_cast<RE::ThirdPersonState*>(plyr_c->cameraStates[RE::CameraState::kThirdPerson].get());
-    if (plyr_c->IsInThirdPerson() && thirdPersonState->currentZoomOffset == thirdPersonState->targetZoomOffset &&
-        savedZoomOffset != thirdPersonState->currentZoomOffset) {
-        savedZoomOffset = thirdPersonState->currentZoomOffset;
-        thirdPersonState->savedZoomOffset = savedZoomOffset;
-    }
-
-    //logger::trace("currentZoomOffset: {}, targetZoomOffset: {}, savedZoomOffset: {}, pitch: {}",
-    //              thirdPersonState->currentZoomOffset, thirdPersonState->targetZoomOffset,
-    //              thirdPersonState->savedZoomOffset, thirdPersonState->pitchZoomOffset);
-
-
-    // killmove handling
-    if (!OnKillmove(a_actor)) {
-        logger::trace("Killmove detected.");
-        return func(a_actor, a_zPos, a_cell);
-    }
-
-    int shouldToggleWeapon = 0;
-    int shouldToggleCombat = 0;
-
-    // weapon draw handling
-    if (ToggleWeapon && (!IsMagicEquipped() || !ToggleMagicWield) && OnWeaponDraw(a_actor)) {
-        logger::trace("Weapon draw detected. Should toggle.");
-        shouldToggleWeapon += 1;
-    }
-
-    // combat handling
-    if (ToggleCombat && GetCombatState() != oldstate_c && !bow_cam_switched && !casting_switched) {
-        oldstate_c = oldstate_c != 0 ? 0 : 1;
-        const auto temp = CamSwitchHandling(oldstate_c, ToggleCombat.invert, ToggleCombat.revert);
-        if (temp > 0) {
-            shouldToggleCombat += temp;
-            logger::trace("Combat detected. Should toggle.");
-        }
-    }
-
-    // sneak handling
-    if (ToggleSneak && !OnSneak(a_actor)) {
-		logger::trace("Sneak detected. Toggled.");
-		return func(a_actor, a_zPos, a_cell);
-	}
-
-    // bow first person aiming handling
-    if (ToggleBowDraw && !OnBowDraw(a_actor)) {
-        logger::trace("Bow draw detected. Toggled.");
-        return func(a_actor, a_zPos, a_cell);
-    }
-
-    // magic draw and casting handling
-    if (IsMagicEquipped()) {
-
-        
-        // magic draw handling
-        bool ignore_L = ToggleMagicWield.keymap[spell_delivery_L] > 0;
-        bool both_hands_L = ToggleMagicWield.keymap[spell_delivery_L] == 2;
-        bool ignore_R = ToggleMagicWield.keymap[spell_delivery_R] > 0;
-        bool both_hands_R = ToggleMagicWield.keymap[spell_delivery_R] == 2;
-        ignore_L = both_hands_L ? ignore_L && spell_delivery_L == spell_delivery_R : ignore_L;
-        ignore_R = both_hands_R ? ignore_R && spell_delivery_L == spell_delivery_R : ignore_R;
-        bool ignore = ignore_L || ignore_R;
-        if (ToggleMagicWield && !ignore && !OnMagicDraw(a_actor)) {
-            logger::trace("Magic draw detected. Toggled.");
-            return func(a_actor, a_zPos, a_cell);
-        }
-
-        // magic casting handling
-        ignore_L = ToggleMagicCast.keymap[spell_delivery_L] > 0;
-        both_hands_L = ToggleMagicCast.keymap[spell_delivery_L] == 2;
-        ignore_R = ToggleMagicCast.keymap[spell_delivery_R] > 0;
-        both_hands_R = ToggleMagicCast.keymap[spell_delivery_R] == 2;
-        ignore_L = both_hands_L ? ignore_L && spell_delivery_L == spell_delivery_R : ignore_L;
-        ignore_R = both_hands_R ? ignore_R && spell_delivery_L == spell_delivery_R : ignore_R;
-        ignore = ignore_L || ignore_R;
-        if (ToggleMagicCast && !ignore  && !OnMagicCast(a_actor)) {
-            logger::trace("Magic cast detected. Toggled.");
-            return func(a_actor, a_zPos, a_cell);
-        }
-    }
-
-    if (shouldToggleWeapon) funcToggle(ToggleWeapon);
-    else if (shouldToggleCombat) funcToggle(ToggleCombat);
-
-    return func(a_actor, a_zPos, a_cell);
+	Hooks::PlayerUpdateHook::Install();
 }
+
+//void Combat::OnActorUpdate::thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjectCELL* a_cell) {
+//    if (auto* plyr_chr = RE::PlayerCharacter::GetSingleton(); 
+//        !a_actor || 
+//        plyr_chr->GetGameStatsData().byCharGenFlag.any(RE::PlayerCharacter::ByCharGenFlag::kHandsBound) ||
+//        plyr_chr->GetFormID() != a_actor->GetFormID() || 
+//        //Utilities::IsVampireLord(plyr_chr) ||
+//        Utilities::IsWerewolf(plyr_chr)) {
+//        return func(a_actor, a_zPos, a_cell);
+//    }
+//    auto plyr_c = RE::PlayerCamera::GetSingleton();
+//    if (!plyr_c->IsInFirstPerson() && !plyr_c->IsInThirdPerson()) return func(a_actor, a_zPos, a_cell);
+//    auto thirdPersonState =
+//        static_cast<RE::ThirdPersonState*>(plyr_c->cameraStates[RE::CameraState::kThirdPerson].get());
+//    if (plyr_c->IsInThirdPerson() && thirdPersonState->currentZoomOffset == thirdPersonState->targetZoomOffset &&
+//        savedZoomOffset != thirdPersonState->currentZoomOffset) {
+//        savedZoomOffset = thirdPersonState->currentZoomOffset;
+//        thirdPersonState->savedZoomOffset = savedZoomOffset;
+//    }
+//
+//    //logger::trace("currentZoomOffset: {}, targetZoomOffset: {}, savedZoomOffset: {}, pitch: {}",
+//    //              thirdPersonState->currentZoomOffset, thirdPersonState->targetZoomOffset,
+//    //              thirdPersonState->savedZoomOffset, thirdPersonState->pitchZoomOffset);
+//
+//
+//    // killmove handling
+//    if (!OnKillmove(a_actor)) {
+//        logger::trace("Killmove detected.");
+//        return func(a_actor, a_zPos, a_cell);
+//    }
+//
+//    int shouldToggleWeapon = 0;
+//    int shouldToggleCombat = 0;
+//
+//    // weapon draw handling
+//    if (ToggleWeapon && (!IsMagicEquipped() || !ToggleMagicWield) && OnWeaponDraw(a_actor)) {
+//        logger::trace("Weapon draw detected. Should toggle.");
+//        shouldToggleWeapon += 1;
+//    }
+//
+//    // combat handling
+//    if (ToggleCombat && GetCombatState() != oldstate_c && !bow_cam_switched && !casting_switched) {
+//        oldstate_c = oldstate_c != 0 ? 0 : 1;
+//        const auto temp = CamSwitchHandling(oldstate_c, ToggleCombat.invert, ToggleCombat.revert);
+//        if (temp > 0) {
+//            shouldToggleCombat += temp;
+//            logger::trace("Combat detected. Should toggle.");
+//        }
+//    }
+//
+//    // sneak handling
+//    if (ToggleSneak && !OnSneak(a_actor)) {
+//		logger::trace("Sneak detected. Toggled.");
+//		return func(a_actor, a_zPos, a_cell);
+//	}
+//
+//    // bow first person aiming handling
+//    if (ToggleBowDraw && !OnBowDraw(a_actor)) {
+//        logger::trace("Bow draw detected. Toggled.");
+//        return func(a_actor, a_zPos, a_cell);
+//    }
+//
+//    // magic draw and casting handling
+//    if (IsMagicEquipped()) {
+//
+//        
+//        // magic draw handling
+//        bool ignore_L = ToggleMagicWield.keymap[spell_delivery_L] > 0;
+//        bool both_hands_L = ToggleMagicWield.keymap[spell_delivery_L] == 2;
+//        bool ignore_R = ToggleMagicWield.keymap[spell_delivery_R] > 0;
+//        bool both_hands_R = ToggleMagicWield.keymap[spell_delivery_R] == 2;
+//        ignore_L = both_hands_L ? ignore_L && spell_delivery_L == spell_delivery_R : ignore_L;
+//        ignore_R = both_hands_R ? ignore_R && spell_delivery_L == spell_delivery_R : ignore_R;
+//        bool ignore = ignore_L || ignore_R;
+//        if (ToggleMagicWield && !ignore && !OnMagicDraw(a_actor)) {
+//            logger::trace("Magic draw detected. Toggled.");
+//            return func(a_actor, a_zPos, a_cell);
+//        }
+//
+//        // magic casting handling
+//        ignore_L = ToggleMagicCast.keymap[spell_delivery_L] > 0;
+//        both_hands_L = ToggleMagicCast.keymap[spell_delivery_L] == 2;
+//        ignore_R = ToggleMagicCast.keymap[spell_delivery_R] > 0;
+//        both_hands_R = ToggleMagicCast.keymap[spell_delivery_R] == 2;
+//        ignore_L = both_hands_L ? ignore_L && spell_delivery_L == spell_delivery_R : ignore_L;
+//        ignore_R = both_hands_R ? ignore_R && spell_delivery_L == spell_delivery_R : ignore_R;
+//        ignore = ignore_L || ignore_R;
+//        if (ToggleMagicCast && !ignore  && !OnMagicCast(a_actor)) {
+//            logger::trace("Magic cast detected. Toggled.");
+//            return func(a_actor, a_zPos, a_cell);
+//        }
+//    }
+//
+//    if (shouldToggleWeapon) funcToggle(ToggleWeapon);
+//    else if (shouldToggleCombat) funcToggle(ToggleCombat);
+//
+//    return func(a_actor, a_zPos, a_cell);
+//}
 
 bool Combat::OnActorUpdate::OnKillmove(const RE::Actor* a_actor) {
     if (a_actor->IsInKillMove()) {
@@ -239,12 +240,4 @@ bool Combat::IsCasting() {
     if (equipped_obj_L_MI && player_char->IsCasting(equipped_obj_L_MI)) is_casting = true;
     if (equipped_obj_R_MI && player_char->IsCasting(equipped_obj_R_MI)) is_casting = true;
     return is_casting;
-}
-
-void Combat::InstallHooks() {
-    auto& trampoline = SKSE::GetTrampoline();
-
-    REL::Relocation<std::uintptr_t> actorupdateFunction{REL::RelocationID(36357, 37348)};
-    OnActorUpdate::func =
-        trampoline.write_call<5>(actorupdateFunction.address() + REL::Relocate(0x6D3, 0x674), OnActorUpdate::thunk);
 }
