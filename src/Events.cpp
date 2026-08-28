@@ -50,6 +50,16 @@ RE::BSEventNotifyControl OurEventSink::ProcessEvent(const RE::MenuOpenCloseEvent
     if (!event) return RE::BSEventNotifyControl::kContinue;
     if (!Modules::Dialogue::listen_auto_zoom) return RE::BSEventNotifyControl::kContinue;
     if (event->menuName != RE::DialogueMenu::MENU_NAME) return RE::BSEventNotifyControl::kContinue;
+
+    if (event->opening && Modules::Dialogue::Toggle.fix_zoom.enabled) {
+        const auto playerCamera = RE::PlayerCamera::GetSingleton();
+        const auto thirdPersonState = static_cast<RE::ThirdPersonState*>(playerCamera->GetRuntimeData().cameraStates[
+            RE::CameraState::kThirdPerson].get());
+        if (playerCamera->IsInThirdPerson() && thirdPersonState) {
+            thirdPersonState->targetZoomOffset = Modules::Dialogue::Toggle.fix_zoom.zoom_lvl;
+        }
+    }
+
     if (!Modules::Dialogue::AutoToggle) return RE::BSEventNotifyControl::kContinue;
 
     if (event->opening) {
