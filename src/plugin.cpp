@@ -7,13 +7,16 @@ void OnMessage(SKSE::MessagingInterface::Message* message) {
         MCP::Register();
         logger::info("MCP registered.");
     }
+    if (message->type == SKSE::MessagingInterface::kInputLoaded) {
+        logger::info("Adding input event sink.");
+        RE::BSInputDeviceManager::GetSingleton()->AddEventSink(OurEventSink::GetSingleton());
+    }
     if (message->type == SKSE::MessagingInterface::kNewGame || message->type ==
         SKSE::MessagingInterface::kPostLoadGame) {
         // Post-load
         if (eventsinks_added) return;
         auto* eventsink = OurEventSink::GetSingleton();
         logger::info("Adding event sink for dialogue menu zoom.");
-        RE::BSInputDeviceManager::GetSingleton()->AddEventSink(eventsink);
         if (auto* ui = RE::UI::GetSingleton(); ui) {
             logger::info("Adding event sink for dialogue menu auto zoom.");
             ui->AddEventSink<RE::MenuOpenCloseEvent>(eventsink);

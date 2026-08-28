@@ -53,6 +53,7 @@ RE::BSEventNotifyControl OurEventSink::ProcessEvent(const RE::MenuOpenCloseEvent
     const auto playerCamera = RE::PlayerCamera::GetSingleton();
     const auto thirdPersonState = static_cast<RE::ThirdPersonState*>(playerCamera->GetRuntimeData().cameraStates[
         RE::CameraState::kThirdPerson].get());
+    const bool gradualZoomWasInProgress = Modules::Dialogue::listen_gradual_zoom;
 
     if (event->opening && Modules::Dialogue::Toggle.fix_zoom.enabled && thirdPersonState) {
         Modules::Dialogue::preDialogueZoomOffset = playerCamera->IsInThirdPerson()
@@ -79,9 +80,19 @@ RE::BSEventNotifyControl OurEventSink::ProcessEvent(const RE::MenuOpenCloseEvent
         }
     }
 
+    const bool gradualZoomStartedOnClose = !event->opening && !gradualZoomWasInProgress &&
+                                           Modules::Dialogue::listen_gradual_zoom;
+
     if (!event->opening) {
         if (Modules::Dialogue::Toggle.revert && Modules::Dialogue::preDialogueZoomOffset && thirdPersonState) {
-            thirdPersonState->targetZoomOffset = *Modules::Dialogue::preDialogueZoomOffset;
+            thirdPersonState->savedZoomOffset = *Modules::Dialogue::preDialogueZoomOffset;
+            if (!gradualZoomStartedOnClose) {
+                thirdPersonState->targetZoomOffset = *Modules::Dialogue::preDialogueZoomOffset;
+                if (gradualZoomWasInProgress) {
+                    Modules::Dialogue::listen_gradual_zoom = false;
+                    Modules::Dialogue::listen_auto_zoom = true;
+                }
+            }
         }
         Modules::Dialogue::preDialogueZoomOffset.reset();
     }
