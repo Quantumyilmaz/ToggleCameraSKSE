@@ -4,8 +4,8 @@
 
 
 namespace Dialogue {
-    const uint8_t n_hooks = 1;
-    const size_t trampoline_size = n_hooks * 14;
+    constexpr uint8_t n_hooks = 1;
+    constexpr size_t trampoline_size = n_hooks * 14;
 
     namespace OnCameraUpdate {
         static void thunk(RE::TESCamera* a_camera);
@@ -19,18 +19,18 @@ namespace Combat {
     using namespace Modules::Combat;
     using namespace Utilities;
 
-	const uint8_t n_hooks = 1;
-	const size_t trampoline_size = n_hooks * 14;
-    inline int spell_delivery_L=-1;
-    inline int spell_delivery_R=-1;
+    constexpr uint8_t n_hooks = 1;
+    constexpr size_t trampoline_size = n_hooks * 14;
+    inline int spell_delivery_L = -1;
+    inline int spell_delivery_R = -1;
 
     bool IsMagicEquipped();
 
     bool IsCasting();
 
-	namespace OnActorUpdate {
+    namespace OnActorUpdate {
         static void thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjectCELL* a_cell);
-		static inline REL::Relocation<decltype(thunk)> func;
+        static inline REL::Relocation<decltype(thunk)> func;
 
         bool __Killmove(RE::Actor* a_actor);
         bool __WeaponDraw(RE::Actor* a_actor);
@@ -40,9 +40,9 @@ namespace Combat {
         bool __MagicCast(RE::Actor* a_actor);
 
         inline bool sneaked = false;
-	};
+    };
 
-	void InstallHooks();
+    void InstallHooks();
 };
 
 namespace Hooks {

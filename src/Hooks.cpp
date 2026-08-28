@@ -1,31 +1,28 @@
 #include "Hooks.h"
 
 
-void Dialogue::OnCameraUpdate::thunk(RE::TESCamera* a_camera){
-	func(a_camera);
-    if (!Modules::Dialogue::listen_gradual_zoom && !Modules::Combat::listen_gradual_zoom) return;
-    if (auto* thirdPersonState = static_cast<RE::ThirdPersonState*>(a_camera->currentState.get());
+void Dialogue::OnCameraUpdate::thunk(RE::TESCamera* a_camera) {
+    func(a_camera);
+    if (!Modules::Dialogue::listen_gradual_zoom && !Combat::listen_gradual_zoom) return;
+    if (const auto* thirdPersonState = static_cast<RE::ThirdPersonState*>(a_camera->currentState.get());
         thirdPersonState &&
         thirdPersonState->currentZoomOffset < -0.19f) {
         Modules::Dialogue::listen_gradual_zoom = false;
-        Modules::Combat::listen_gradual_zoom = false;
+        Combat::listen_gradual_zoom = false;
         RE::PlayerCamera::GetSingleton()->ForceFirstPerson();
         Modules::Dialogue::listen_auto_zoom = true;
     }
-	
 };
 
 void Dialogue::InstallHooks() {
-    
     auto& trampoline = SKSE::GetTrampoline();
 
-    REL::Relocation<std::uintptr_t> camFunction{REL::RelocationID(49852, 50784)};
-    OnCameraUpdate::func = trampoline.write_call<5>(camFunction.address() + REL::Relocate(0x1A6, 0x1A6), OnCameraUpdate::thunk);
-
+    const REL::Relocation<std::uintptr_t> camFunction{REL::RelocationID(49852, 50784)};
+    OnCameraUpdate::func = trampoline.write_call<5>(camFunction.address() + REL::Relocate(0x1A6, 0x1A6),
+                                                    OnCameraUpdate::thunk);
 };
 
-void Hooks::Install(){
-
+void Hooks::Install() {
     // currently only hook is dialogue
     auto& trampoline = SKSE::GetTrampoline();
     trampoline.create(Dialogue::trampoline_size + Combat::trampoline_size);
@@ -35,18 +32,19 @@ void Hooks::Install(){
 };
 
 void Combat::OnActorUpdate::thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjectCELL* a_cell) {
-    if (auto* plyr_chr = RE::PlayerCharacter::GetSingleton(); 
-        !a_actor || 
-        plyr_chr->GetGameStatsData().byCharGenFlag.any(RE::PlayerCharacter::ByCharGenFlag::kHandsBound) ||
-        plyr_chr->GetFormID() != a_actor->GetFormID() || 
+    if (auto* plyr_chr = RE::PlayerCharacter::GetSingleton();
+        !a_actor ||
+        plyr_chr->GetGameStatsData().byCharGenFlag.any(
+            RE::PlayerCharacter::ByCharGenFlag::kShowControlsDisabledMessage) ||
+        plyr_chr->GetFormID() != a_actor->GetFormID() ||
         //Utilities::IsVampireLord(plyr_chr) ||
-        Utilities::IsWerewolf(plyr_chr)) {
+        IsWerewolf(plyr_chr)) {
         return func(a_actor, a_zPos, a_cell);
     }
-    auto plyr_c = RE::PlayerCamera::GetSingleton();
+    const auto plyr_c = RE::PlayerCamera::GetSingleton();
     if (!plyr_c->IsInFirstPerson() && !plyr_c->IsInThirdPerson()) return func(a_actor, a_zPos, a_cell);
-    auto thirdPersonState =
-        static_cast<RE::ThirdPersonState*>(plyr_c->cameraStates[RE::CameraState::kThirdPerson].get());
+    const auto thirdPersonState =
+        static_cast<RE::ThirdPersonState*>(plyr_c->GetRuntimeData().cameraStates[RE::CameraState::kThirdPerson].get());
     if (plyr_c->IsInThirdPerson() && thirdPersonState->currentZoomOffset == thirdPersonState->targetZoomOffset &&
         savedZoomOffset != thirdPersonState->currentZoomOffset) {
         savedZoomOffset = thirdPersonState->currentZoomOffset;
@@ -56,7 +54,6 @@ void Combat::OnActorUpdate::thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjec
     //logger::trace("currentZoomOffset: {}, targetZoomOffset: {}, savedZoomOffset: {}, pitch: {}",
     //              thirdPersonState->currentZoomOffset, thirdPersonState->targetZoomOffset,
     //              thirdPersonState->savedZoomOffset, thirdPersonState->pitchZoomOffset);
-
 
     // killmove handling
     if (!__Killmove(a_actor)) {
@@ -85,9 +82,9 @@ void Combat::OnActorUpdate::thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjec
 
     // sneak handling
     if (ToggleSneak && !__Sneak(a_actor)) {
-		logger::trace("Sneak detected. Toggled.");
-		return func(a_actor, a_zPos, a_cell);
-	}
+        logger::trace("Sneak detected. Toggled.");
+        return func(a_actor, a_zPos, a_cell);
+    }
 
     // bow first person aiming handling
     if (ToggleBowDraw && !__BowDraw(a_actor)) {
@@ -97,8 +94,6 @@ void Combat::OnActorUpdate::thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjec
 
     // magic draw and casting handling
     if (IsMagicEquipped()) {
-
-        
         // magic draw handling
         bool ignore_L = ToggleMagicWield.keymap[spell_delivery_L] > 0;
         bool both_hands_L = ToggleMagicWield.keymap[spell_delivery_L] == 2;
@@ -120,7 +115,7 @@ void Combat::OnActorUpdate::thunk(RE::Actor* a_actor, float a_zPos, RE::TESObjec
         ignore_L = both_hands_L ? ignore_L && spell_delivery_L == spell_delivery_R : ignore_L;
         ignore_R = both_hands_R ? ignore_R && spell_delivery_L == spell_delivery_R : ignore_R;
         ignore = ignore_L || ignore_R;
-        if (ToggleMagicCast && !ignore  && !__MagicCast(a_actor)) {
+        if (ToggleMagicCast && !ignore && !__MagicCast(a_actor)) {
             logger::trace("Magic cast detected. Toggled.");
             return func(a_actor, a_zPos, a_cell);
         }
@@ -136,7 +131,8 @@ bool Combat::OnActorUpdate::__Killmove(RE::Actor* a_actor) {
     if (a_actor->IsInKillMove()) {
         oldstate_c = 1;
         return false;
-    } else if (RE::PlayerCamera::GetSingleton()->IsInBleedoutMode()) {
+    }
+    if (RE::PlayerCamera::GetSingleton()->IsInBleedoutMode()) {
         return false;
     }
     return true;
@@ -146,20 +142,20 @@ bool Combat::OnActorUpdate::__Sneak(RE::Actor* a_actor) {
     const auto is_sneaking = a_actor->IsSneaking();
     if (is_sneaking == sneaked) return true;
     sneaked = is_sneaking;
-    bool is_3rd_p = Is3rdP();
-    if (bool player_is_in_toggled_cam = ToggleSneak.invert ? !is_3rd_p : is_3rd_p;
-		is_sneaking && !player_is_in_toggled_cam) {
-		funcToggle(ToggleSneak);
-		return false;
-	} else if (!is_sneaking && player_is_in_toggled_cam) {
-		funcToggle(ToggleSneak);
-		return false;
-	}
-	return true;
+    const bool is_3rd_p = Is3rdP();
+    if (const bool player_is_in_toggled_cam = ToggleSneak.invert ? !is_3rd_p : is_3rd_p;
+        is_sneaking && !player_is_in_toggled_cam) {
+        funcToggle(ToggleSneak);
+        return false;
+    } else if (!is_sneaking && player_is_in_toggled_cam) {
+        funcToggle(ToggleSneak);
+        return false;
+    }
+    return true;
 }
 
-bool Combat::OnActorUpdate::__WeaponDraw(RE::Actor* a_actor) { 
-    auto weapon_state = static_cast<uint32_t>(a_actor->AsActorState()->GetWeaponState());
+bool Combat::OnActorUpdate::__WeaponDraw(RE::Actor* a_actor) {
+    const auto weapon_state = static_cast<uint32_t>(a_actor->AsActorState()->GetWeaponState());
     if ((!weapon_state || weapon_state == 3) && oldstate_w != weapon_state) {
         oldstate_w = weapon_state;
         return CamSwitchHandling(oldstate_w, ToggleWeapon.invert, ToggleWeapon.revert) > 0;
@@ -168,14 +164,15 @@ bool Combat::OnActorUpdate::__WeaponDraw(RE::Actor* a_actor) {
 }
 
 bool Combat::OnActorUpdate::__BowDraw(RE::Actor* a_actor) {
-    auto attack_state = static_cast<uint32_t>(a_actor->AsActorState()->GetAttackState());
-    bool is_3rd_p = Is3rdP();
-    if (bool player_is_in_toggled_cam = ToggleBowDraw.invert ? is_3rd_p : !is_3rd_p;
+    const auto attack_state = static_cast<uint32_t>(a_actor->AsActorState()->GetAttackState());
+    const bool is_3rd_p = Is3rdP();
+    if (const bool player_is_in_toggled_cam = ToggleBowDraw.invert ? is_3rd_p : !is_3rd_p;
         !player_is_in_toggled_cam && attack_state == 8) {
         funcToggle(ToggleBowDraw);
         bow_cam_switched = true;
         return false;
-    } else if (bow_cam_switched && (!attack_state || attack_state == 13) && player_is_in_toggled_cam && ToggleBowDraw.revert) {
+    } else if (bow_cam_switched && (!attack_state || attack_state == 13) && player_is_in_toggled_cam && ToggleBowDraw.
+               revert) {
         funcToggle(ToggleBowDraw);
         bow_cam_switched = false;
         return false;
@@ -184,11 +181,11 @@ bool Combat::OnActorUpdate::__BowDraw(RE::Actor* a_actor) {
 }
 
 bool Combat::OnActorUpdate::__MagicDraw(RE::Actor* a_actor) {
-    auto magic_state = static_cast<uint32_t>(a_actor->AsActorState()->GetWeaponState());
+    const auto magic_state = static_cast<uint32_t>(a_actor->AsActorState()->GetWeaponState());
     if (oldstate_m != magic_state) {
-        bool is_3rd_p = Is3rdP();
+        const bool is_3rd_p = Is3rdP();
         oldstate_m = magic_state;
-        if (bool player_is_in_toggled_cam = ToggleMagicWield.invert ? is_3rd_p : !is_3rd_p;
+        if (const bool player_is_in_toggled_cam = ToggleMagicWield.invert ? is_3rd_p : !is_3rd_p;
             magic_state == 5 && player_is_in_toggled_cam && ToggleMagicWield.revert) {
             funcToggle(ToggleMagicWield);
             return false;
@@ -201,8 +198,8 @@ bool Combat::OnActorUpdate::__MagicDraw(RE::Actor* a_actor) {
 }
 
 bool Combat::OnActorUpdate::__MagicCast(RE::Actor*) {
-    bool is_3rd_p = Is3rdP();
-    if (bool player_is_in_toggled_cam = ToggleMagicCast.invert ? is_3rd_p : !is_3rd_p;
+    const bool is_3rd_p = Is3rdP();
+    if (const bool player_is_in_toggled_cam = ToggleMagicCast.invert ? is_3rd_p : !is_3rd_p;
         !IsCasting() && player_is_in_toggled_cam && ToggleMagicCast.revert && casting_switched) {
         funcToggle(ToggleMagicCast);
         casting_switched = false;
@@ -216,11 +213,11 @@ bool Combat::OnActorUpdate::__MagicCast(RE::Actor*) {
 }
 
 bool Combat::IsMagicEquipped() {
-    auto player_char = RE::PlayerCharacter::GetSingleton();
-    auto equipped_obj_L = player_char->GetEquippedObject(true);
-    auto equipped_obj_R = player_char->GetEquippedObject(false);
-    bool L_is_magic = equipped_obj_L ? equipped_obj_L->IsMagicItem() : false;
-    bool R_is_magic = equipped_obj_R ? equipped_obj_R->IsMagicItem() : false;
+    const auto player_char = RE::PlayerCharacter::GetSingleton();
+    const auto equipped_obj_L = player_char->GetEquippedObject(true);
+    const auto equipped_obj_R = player_char->GetEquippedObject(false);
+    const bool L_is_magic = equipped_obj_L ? equipped_obj_L->IsMagicItem() : false;
+    const bool R_is_magic = equipped_obj_R ? equipped_obj_R->IsMagicItem() : false;
     spell_delivery_L = (L_is_magic ? static_cast<int>(equipped_obj_L->As<RE::MagicItem>()->GetDelivery()) : -1);
     spell_delivery_R = (R_is_magic ? static_cast<int>(equipped_obj_R->As<RE::MagicItem>()->GetDelivery()) : -1);
     return L_is_magic || R_is_magic;
@@ -228,9 +225,9 @@ bool Combat::IsMagicEquipped() {
 
 bool Combat::IsCasting() {
     if (!IsMagicEquipped()) return false;
-    auto player_char = RE::PlayerCharacter::GetSingleton();
-    auto equipped_obj_L = player_char->GetEquippedObject(true);
-    auto equipped_obj_R = player_char->GetEquippedObject(false);
+    const auto player_char = RE::PlayerCharacter::GetSingleton();
+    const auto equipped_obj_L = player_char->GetEquippedObject(true);
+    const auto equipped_obj_R = player_char->GetEquippedObject(false);
     RE::MagicItem* equipped_obj_L_MI = nullptr;
     RE::MagicItem* equipped_obj_R_MI = nullptr;
     if (equipped_obj_L) equipped_obj_L_MI = equipped_obj_L->As<RE::MagicItem>();
@@ -244,7 +241,7 @@ bool Combat::IsCasting() {
 void Combat::InstallHooks() {
     auto& trampoline = SKSE::GetTrampoline();
 
-    REL::Relocation<std::uintptr_t> actorupdateFunction{REL::RelocationID(36357, 37348)};
+    const REL::Relocation<std::uintptr_t> actorupdateFunction{REL::RelocationID(36357, 37348)};
     OnActorUpdate::func =
         trampoline.write_call<5>(actorupdateFunction.address() + REL::Relocate(0x6D3, 0x674), OnActorUpdate::thunk);
 }
