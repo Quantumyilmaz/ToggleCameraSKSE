@@ -3,8 +3,9 @@
 bool eventsinks_added = false;
 
 void OnMessage(SKSE::MessagingInterface::Message* message) {
-    if (message->type == SKSE::MessagingInterface::kDataLoaded) {
-        // Start
+    if (message->type == SKSE::MessagingInterface::kPostLoad) {
+        MCP::Register();
+        logger::info("MCP registered.");
     }
     if (message->type == SKSE::MessagingInterface::kNewGame || message->type == SKSE::MessagingInterface::kPostLoadGame) {
         // Post-load
@@ -19,9 +20,6 @@ void OnMessage(SKSE::MessagingInterface::Message* message) {
         RE::PlayerCharacter::GetSingleton()->AsBGSActorCellEventSource()->AddEventSink(eventsink);
         SKSE::GetCameraEventSource()->AddEventSink(eventsink);
         eventsinks_added = true;
-        // MCP
-        MCP::Register();
-        logger::info("MCP registered.");
     }
 }
 

@@ -142,16 +142,20 @@ RE::BSEventNotifyControl OurEventSink::ProcessEvent(const SKSE::CameraEvent* a_e
                                                     RE::BSTEventSource<SKSE::CameraEvent>*) {
 
     if (!a_event) return RE::BSEventNotifyControl::kContinue;
-    if (!Modules::Other::FixZoom.fix_zoom.enabled) return RE::BSEventNotifyControl::kContinue;
+    const auto& dialogueFixZoom = Modules::Dialogue::Toggle.fix_zoom;
+    const auto& fixZoom = Utilities::Menu::IsOpen(RE::DialogueMenu::MENU_NAME) && dialogueFixZoom.enabled ?
+                              dialogueFixZoom :
+                              Modules::Other::FixZoom.fix_zoom;
+    if (!fixZoom.enabled) return RE::BSEventNotifyControl::kContinue;
     if (!RE::PlayerCamera::GetSingleton()->IsInThirdPerson()) return RE::BSEventNotifyControl::kContinue;
     const auto thirdPersonState = static_cast<RE::ThirdPersonState*>(RE::PlayerCamera::GetSingleton()->cameraStates[RE::CameraState::kThirdPerson].get());
     if (!thirdPersonState) return RE::BSEventNotifyControl::kContinue;
     //if (std::abs(thirdPersonState->currentZoomOffset - thirdPersonState->targetZoomOffset)>0.01){
     //    return RE::BSEventNotifyControl::kContinue;
     //}
-    if (thirdPersonState->currentZoomOffset == Modules::Other::FixZoom.fix_zoom.zoom_lvl) return RE::BSEventNotifyControl::kContinue;
+    if (thirdPersonState->currentZoomOffset == fixZoom.zoom_lvl) return RE::BSEventNotifyControl::kContinue;
     logger::trace("CameraEvent: FixZoom");
-    thirdPersonState->targetZoomOffset = Modules::Other::FixZoom.fix_zoom.zoom_lvl;
+    thirdPersonState->targetZoomOffset = fixZoom.zoom_lvl;
 
     return RE::BSEventNotifyControl::kContinue;
 }
