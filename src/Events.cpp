@@ -48,32 +48,42 @@ void OurEventSink::_HandleDialogueInputs(RE::ButtonEvent* a_event) {
 RE::BSEventNotifyControl OurEventSink::ProcessEvent(const RE::MenuOpenCloseEvent* event,
                                                     RE::BSTEventSource<RE::MenuOpenCloseEvent>*) {
     if (!event) return RE::BSEventNotifyControl::kContinue;
-    if (!Modules::Dialogue::listen_auto_zoom) return RE::BSEventNotifyControl::kContinue;
     if (event->menuName != RE::DialogueMenu::MENU_NAME) return RE::BSEventNotifyControl::kContinue;
 
-    if (event->opening && Modules::Dialogue::Toggle.fix_zoom.enabled) {
-        const auto playerCamera = RE::PlayerCamera::GetSingleton();
-        const auto thirdPersonState = static_cast<RE::ThirdPersonState*>(playerCamera->GetRuntimeData().cameraStates[
-            RE::CameraState::kThirdPerson].get());
-        if (playerCamera->IsInThirdPerson() && thirdPersonState) {
+    const auto playerCamera = RE::PlayerCamera::GetSingleton();
+    const auto thirdPersonState = static_cast<RE::ThirdPersonState*>(playerCamera->GetRuntimeData().cameraStates[
+        RE::CameraState::kThirdPerson].get());
+
+    if (event->opening && Modules::Dialogue::Toggle.fix_zoom.enabled && thirdPersonState) {
+        Modules::Dialogue::preDialogueZoomOffset = playerCamera->IsInThirdPerson()
+                                                        ? thirdPersonState->currentZoomOffset
+                                                        : thirdPersonState->savedZoomOffset;
+        if (playerCamera->IsInThirdPerson()) {
             thirdPersonState->targetZoomOffset = Modules::Dialogue::Toggle.fix_zoom.zoom_lvl;
         }
     }
 
-    if (!Modules::Dialogue::AutoToggle) return RE::BSEventNotifyControl::kContinue;
+    if (Modules::Dialogue::listen_auto_zoom && Modules::Dialogue::AutoToggle) {
+        if (event->opening) {
+            if (playerCamera->IsInThirdPerson() && !Modules::Dialogue::AutoToggle.invert) {
+                Modules::Dialogue::funcToggle();
+            } else if (playerCamera->IsInFirstPerson() && Modules::Dialogue::AutoToggle.invert) {
+                Modules::Dialogue::funcToggle();
+            }
+        } else if (Modules::Dialogue::AutoToggle.revert) {
+            if (playerCamera->IsInFirstPerson() && !Modules::Dialogue::AutoToggle.invert) {
+                Modules::Dialogue::funcToggle();
+            } else if (playerCamera->IsInThirdPerson() && Modules::Dialogue::AutoToggle.invert) {
+                Modules::Dialogue::funcToggle();
+            }
+        }
+    }
 
-    if (event->opening) {
-        if (RE::PlayerCamera::GetSingleton()->IsInThirdPerson() && !Modules::Dialogue::AutoToggle.invert) {
-            Modules::Dialogue::funcToggle();
-        } else if (RE::PlayerCamera::GetSingleton()->IsInFirstPerson() && Modules::Dialogue::AutoToggle.invert) {
-            Modules::Dialogue::funcToggle();
+    if (!event->opening) {
+        if (Modules::Dialogue::Toggle.revert && Modules::Dialogue::preDialogueZoomOffset && thirdPersonState) {
+            thirdPersonState->targetZoomOffset = *Modules::Dialogue::preDialogueZoomOffset;
         }
-    } else if (!event->opening && Modules::Dialogue::AutoToggle.revert) {
-        if (RE::PlayerCamera::GetSingleton()->IsInFirstPerson() && !Modules::Dialogue::AutoToggle.invert) {
-            Modules::Dialogue::funcToggle();
-        } else if (RE::PlayerCamera::GetSingleton()->IsInThirdPerson() && Modules::Dialogue::AutoToggle.invert) {
-            Modules::Dialogue::funcToggle();
-        }
+        Modules::Dialogue::preDialogueZoomOffset.reset();
     }
 
     return RE::BSEventNotifyControl::kContinue;

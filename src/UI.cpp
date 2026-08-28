@@ -142,6 +142,9 @@ void MCP::Dialogue::Render() {
                              Modules::Dialogue::Toggle.keymap);
         ImGuiMCP::SameLine();
         ImGuiMCP::Checkbox((std::string("InstantZoom") + "##" + title).c_str(), &Modules::Dialogue::Toggle.instant);
+        ImGuiMCP::SameLine();
+        ImGuiMCP::Checkbox((std::string("Revert") + "##" + title + label).c_str(),
+                           &Modules::Dialogue::Toggle.revert);
         RenderDeviceKeyCombo(title, "ZoomEnabler", Modules::Dialogue::ZoomEnable.enabled, Toggle::selected_device,
                              Modules::Dialogue::ZoomEnable.keymap);
         RenderDeviceKeyCombo(title, "ZoomIn", Modules::Dialogue::ZoomIn.enabled, Toggle::selected_device,

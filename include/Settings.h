@@ -66,6 +66,7 @@ namespace Modules {
         inline bool listen_gradual_zoom = false;
         inline bool listen_auto_zoom = true;
         inline bool zoom_enabled = false;
+        inline std::optional<float> preDialogueZoomOffset;
 
         void funcToggle();
         void funcZoom(int a_device, bool _in);
