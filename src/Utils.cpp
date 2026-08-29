@@ -5,14 +5,14 @@
 //#endif
 
 bool Utilities::Menu::IsOpen(const std::string_view menuname) {
-    if (auto ui = RE::UI::GetSingleton()) {
+    if (const auto ui = RE::UI::GetSingleton()) {
         if (ui->IsMenuOpen(menuname)) return true;
     }
     return false;
 }
 
 std::filesystem::path Utilities::GetLogPath() {
-    auto logsFolder = SKSE::log::log_directory();
+    const auto logsFolder = SKSE::log::log_directory();
     if (!logsFolder) SKSE::stl::report_and_fail("SKSE log_directory not provided, logs disabled.");
     auto pluginName = SKSE::PluginDeclaration::GetSingleton()->GetName();
     auto logFilePath = *logsFolder / std::format("{}.log", pluginName);
@@ -56,19 +56,25 @@ std::vector<std::string> Utilities::ReadLogFile() {
 //}
 
 
-const bool Utilities::IsWerewolf(const RE::Actor* player) {
+bool Utilities::IsWerewolf(const RE::Actor* player) {
     const auto race = player->GetRace();
     if (!race) return false;
     return race->GetFormID() == 0x000CDD84;
 }
 
-std::string Utilities::kDelivery2Char(const int delivery) { 
+std::string Utilities::kDelivery2Char(const int delivery) {
     switch (delivery) {
-		case 0: return "Self";
-		case 1: return "Touch";
-		case 2: return "Aimed";
-		case 3: return "Target";
-		case 4: return "Target Location";
-		default: return "Unknown";
-	}
+        case 0:
+            return "Self";
+        case 1:
+            return "Touch";
+        case 2:
+            return "Aimed";
+        case 3:
+            return "Target";
+        case 4:
+            return "Target Location";
+        default:
+            return "Unknown";
+    }
 }

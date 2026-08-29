@@ -24,7 +24,6 @@
 
 
 namespace Utilities {
-
     const auto mod_name = static_cast<std::string>(SKSE::PluginDeclaration::GetSingleton()->GetName());
     const auto plugin_version = SKSE::PluginDeclaration::GetSingleton()->GetVersion();
 
@@ -33,9 +32,7 @@ namespace Utilities {
     std::vector<std::string> ReadLogFile();
 
     namespace Menu {
-
-        bool IsOpen(const std::string_view menuname);
-
+        bool IsOpen(std::string_view menuname);
     };
 
     inline uint32_t GetCombatState() { return RE::PlayerCharacter::GetSingleton()->IsInCombat(); }
@@ -50,7 +47,7 @@ namespace Utilities {
     //const bool IsVampireLord(const RE::Actor* player);
 
     // Returns true if the player is a werewolf
-    const bool IsWerewolf(const RE::Actor* player);
+    bool IsWerewolf(const RE::Actor* player);
 
-    std::string kDelivery2Char(const int delivery);
+    std::string kDelivery2Char(int delivery);
 };

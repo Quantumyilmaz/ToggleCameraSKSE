@@ -1,7 +1,6 @@
 #include "Events.h"
 
 
-
 void OurEventSink::HandleDialogueInputs(RE::InputEvent* const* evns) {
     if (!Utilities::Menu::IsOpen(RE::DialogueMenu::MENU_NAME)) return;
     for (RE::InputEvent* e = *evns; e; e = e->next) {
@@ -12,20 +11,20 @@ void OurEventSink::HandleDialogueInputs(RE::InputEvent* const* evns) {
 }
 
 void OurEventSink::_HandleDialogueInputs(RE::ButtonEvent* a_event) {
-    uint32_t keyMask = a_event->idCode;
-    auto _device = a_event->GetDevice();
+    const uint32_t keyMask = a_event->GetIDCode();
+    const auto _device = a_event->GetDevice();
     // check if _device is supported
-    if (std::find(SupportedDevices.begin(), SupportedDevices.end(), _device) == SupportedDevices.end()) return;
+    if (std::ranges::find(SupportedDevices, _device) == SupportedDevices.end()) return;
 
     //logger::trace("Device: {}, KeyMask: {}", _device, keyMask);
 
     const auto purpose = Modules::Dialogue::GetPurpose(_device, keyMask);
     if (purpose == kNone) return;
 
-    float duration = a_event->heldDownSecs;
-    bool isPressed = a_event->value != 0 && duration >= 0;
-    bool isReleased = a_event->value == 0 && duration != 0;
-    bool _toggle = false;  // switch for 1st/3rd person
+    const float duration = a_event->HeldDuration();
+    const bool isPressed = a_event->Value() != 0 && duration >= 0;
+    const bool isReleased = a_event->Value() == 0 && duration != 0;
+    bool _toggle = false; // switch for 1st/3rd person
 
     if (isPressed) {
         if (purpose == kZoomEnable)
@@ -43,34 +42,61 @@ void OurEventSink::_HandleDialogueInputs(RE::ButtonEvent* a_event) {
     }
     if (_toggle) {
         Modules::Dialogue::funcToggle();
-        _toggle = false;
     }
 }
 
 RE::BSEventNotifyControl OurEventSink::ProcessEvent(const RE::MenuOpenCloseEvent* event,
                                                     RE::BSTEventSource<RE::MenuOpenCloseEvent>*) {
     if (!event) return RE::BSEventNotifyControl::kContinue;
-    if (!Modules::Dialogue::listen_auto_zoom) return RE::BSEventNotifyControl::kContinue;
     if (event->menuName != RE::DialogueMenu::MENU_NAME) return RE::BSEventNotifyControl::kContinue;
-    if (!Modules::Dialogue::AutoToggle) return RE::BSEventNotifyControl::kContinue;
 
-    if (event->opening) {
-        if (RE::PlayerCamera::GetSingleton()->IsInThirdPerson() && !Modules::Dialogue::AutoToggle.invert) {
-            Modules::Dialogue::funcToggle();
-        }
-        else if (RE::PlayerCamera::GetSingleton()->IsInFirstPerson() && Modules::Dialogue::AutoToggle.invert) {
-			Modules::Dialogue::funcToggle();
-		}
-    
-    } else if (!event->opening && Modules::Dialogue::AutoToggle.revert) {
-        if (RE::PlayerCamera::GetSingleton()->IsInFirstPerson() && !Modules::Dialogue::AutoToggle.invert) {
-            Modules::Dialogue::funcToggle();
-        } else if (RE::PlayerCamera::GetSingleton()->IsInThirdPerson() && Modules::Dialogue::AutoToggle.invert) {
-            Modules::Dialogue::funcToggle();
-        }
+    const auto playerCamera = RE::PlayerCamera::GetSingleton();
+    const auto thirdPersonState = static_cast<RE::ThirdPersonState*>(playerCamera->GetRuntimeData().cameraStates[
+        RE::CameraState::kThirdPerson].get());
+    const bool gradualZoomWasInProgress = Modules::Dialogue::listen_gradual_zoom;
 
-    } 
-    
+    if (event->opening && Modules::Dialogue::Toggle.fix_zoom.enabled && thirdPersonState) {
+        Modules::Dialogue::preDialogueZoomOffset = playerCamera->IsInThirdPerson()
+                                                        ? thirdPersonState->currentZoomOffset
+                                                        : thirdPersonState->savedZoomOffset;
+        if (playerCamera->IsInThirdPerson()) {
+            thirdPersonState->targetZoomOffset = Modules::Dialogue::Toggle.fix_zoom.zoom_lvl;
+        }
+    }
+
+    if (Modules::Dialogue::listen_auto_zoom && Modules::Dialogue::AutoToggle) {
+        if (event->opening) {
+            if (playerCamera->IsInThirdPerson() && !Modules::Dialogue::AutoToggle.invert) {
+                Modules::Dialogue::funcToggle();
+            } else if (playerCamera->IsInFirstPerson() && Modules::Dialogue::AutoToggle.invert) {
+                Modules::Dialogue::funcToggle();
+            }
+        } else if (Modules::Dialogue::AutoToggle.revert) {
+            if (playerCamera->IsInFirstPerson() && !Modules::Dialogue::AutoToggle.invert) {
+                Modules::Dialogue::funcToggle();
+            } else if (playerCamera->IsInThirdPerson() && Modules::Dialogue::AutoToggle.invert) {
+                Modules::Dialogue::funcToggle();
+            }
+        }
+    }
+
+    const bool gradualZoomStartedOnClose = !event->opening && !gradualZoomWasInProgress &&
+                                           Modules::Dialogue::listen_gradual_zoom;
+
+    if (!event->opening) {
+        if (Modules::Dialogue::Toggle.revert && Modules::Dialogue::preDialogueZoomOffset && thirdPersonState) {
+            thirdPersonState->savedZoomOffset = *Modules::Dialogue::preDialogueZoomOffset;
+            if (!gradualZoomStartedOnClose) {
+                thirdPersonState->targetZoomOffset = *Modules::Dialogue::preDialogueZoomOffset;
+                if (gradualZoomWasInProgress) {
+                    Modules::Dialogue::listen_gradual_zoom = false;
+                    Modules::Dialogue::listen_auto_zoom = true;
+                }
+            }
+        }
+        Modules::Dialogue::preDialogueZoomOffset.reset();
+    }
+
     return RE::BSEventNotifyControl::kContinue;
 }
 
@@ -82,22 +108,19 @@ RE::BSEventNotifyControl OurEventSink::ProcessEvent(RE::InputEvent* const* evns,
         for (RE::InputEvent* e = *evns; e; e = e->next) {
             if (!e) continue;
             if (e->eventType.get() != RE::INPUT_EVENT_TYPE::kButton) continue;
-            RE::ButtonEvent* a_event = e->AsButtonEvent();
+            const RE::ButtonEvent* a_event = e->AsButtonEvent();
             if (a_event->IsHeld()) continue;
-            uint32_t keyMask = a_event->idCode;
+            uint32_t keyMask = a_event->GetIDCode();
             auto _device = a_event->GetDevice();
-            if (std::find(SupportedDevices.begin(), SupportedDevices.end(), _device) == SupportedDevices.end()) continue;
+            if (std::ranges::find(SupportedDevices, _device) == SupportedDevices.end()) continue;
 
-            float duration = a_event->heldDownSecs;
-            bool isPressed = a_event->value != 0 && duration >= 0;
-
-            if (isPressed) {
+            if (const float duration = a_event->HeldDuration(); a_event->Value() != 0 && duration >= 0) {
                 MCP::listen_key = false;
                 MCP::detected_device = _device;
                 MCP::detected_key = keyMask;
-				logger::info("Input Key Detection -> Device: {}, KeyMask: {}", device_names[_device], keyMask);
+                logger::info("Input Key Detection -> Device: {}, KeyMask: {}", device_names[_device], keyMask);
                 break;
-			}
+            }
         }
         return RE::BSEventNotifyControl::kContinue;
     }
@@ -109,7 +132,6 @@ RE::BSEventNotifyControl OurEventSink::ProcessEvent(RE::InputEvent* const* evns,
 
 RE::BSEventNotifyControl OurEventSink::ProcessEvent(const RE::BGSActorCellEvent* a_event,
                                                     RE::BSTEventSource<RE::BGSActorCellEvent>*) {
-
     if (!a_event) return RE::BSEventNotifyControl::kContinue;
 
     //logger::trace("ActorCellEvent: {}", a_event->cellID);
@@ -127,31 +149,34 @@ RE::BSEventNotifyControl OurEventSink::ProcessEvent(const RE::BGSActorCellEvent*
     const auto is3rdP = RE::PlayerCamera::GetSingleton()->IsInThirdPerson();
     bool player_is_in_toggled_cam = true;
     if (is_exterior) player_is_in_toggled_cam = Modules::Other::ToggleCellChangeExterior.invert ? !is3rdP : is3rdP;
-	else if (is_interior) player_is_in_toggled_cam = Modules::Other::ToggleCellChangeInterior.invert ? is3rdP : !is3rdP;
-    
+    else if (is_interior) player_is_in_toggled_cam = Modules::Other::ToggleCellChangeInterior.invert ? is3rdP : !is3rdP;
+
     if (player_is_in_toggled_cam) return RE::BSEventNotifyControl::kContinue;
 
     //logger::trace("Cell change detected. Toggled.");
     Modules::Other::funcToggle(is3rdP);
-
 
     return RE::BSEventNotifyControl::kContinue;
 }
 
 RE::BSEventNotifyControl OurEventSink::ProcessEvent(const SKSE::CameraEvent* a_event,
                                                     RE::BSTEventSource<SKSE::CameraEvent>*) {
-
     if (!a_event) return RE::BSEventNotifyControl::kContinue;
-    if (!Modules::Other::FixZoom.fix_zoom.enabled) return RE::BSEventNotifyControl::kContinue;
+    const auto& dialogueFixZoom = Modules::Dialogue::Toggle.fix_zoom;
+    const auto& fixZoom = Utilities::Menu::IsOpen(RE::DialogueMenu::MENU_NAME) && dialogueFixZoom.enabled
+                              ? dialogueFixZoom
+                              : Modules::Other::FixZoom.fix_zoom;
+    if (!fixZoom.enabled) return RE::BSEventNotifyControl::kContinue;
     if (!RE::PlayerCamera::GetSingleton()->IsInThirdPerson()) return RE::BSEventNotifyControl::kContinue;
-    const auto thirdPersonState = static_cast<RE::ThirdPersonState*>(RE::PlayerCamera::GetSingleton()->cameraStates[RE::CameraState::kThirdPerson].get());
+    const auto thirdPersonState = static_cast<RE::ThirdPersonState*>(RE::PlayerCamera::GetSingleton()->GetRuntimeData().
+        cameraStates[RE::CameraState::kThirdPerson].get());
     if (!thirdPersonState) return RE::BSEventNotifyControl::kContinue;
     //if (std::abs(thirdPersonState->currentZoomOffset - thirdPersonState->targetZoomOffset)>0.01){
     //    return RE::BSEventNotifyControl::kContinue;
     //}
-    if (thirdPersonState->currentZoomOffset == Modules::Other::FixZoom.fix_zoom.zoom_lvl) return RE::BSEventNotifyControl::kContinue;
+    if (thirdPersonState->currentZoomOffset == fixZoom.zoom_lvl) return RE::BSEventNotifyControl::kContinue;
     logger::trace("CameraEvent: FixZoom");
-    thirdPersonState->targetZoomOffset = Modules::Other::FixZoom.fix_zoom.zoom_lvl;
+    thirdPersonState->targetZoomOffset = fixZoom.zoom_lvl;
 
     return RE::BSEventNotifyControl::kContinue;
 }

@@ -15,7 +15,7 @@ cmake_minimum_required(VERSION 3.21)
 # Set your project name. This will be the name of your SKSE .dll file.
 set(AUTHOR_NAME "Quantumyilmaz")
 set(PRODUCT_NAME "ToggleCameraSKSE")
-project(${PRODUCT_NAME} VERSION 0.1.8.0 LANGUAGES CXX)
+project(${PRODUCT_NAME} VERSION 0.1.9.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
@@ -70,6 +70,9 @@ include(${COMMONLIB_SRC_DIR}/cmake/CommonLibSSE.cmake)
 add_commonlibsse_plugin(
   ${PROJECT_NAME}
   AUTHOR AUTHOR_NAME
+  COMPATIBLE_RUNTIMES
+    1.5.97.0
+    1.6.1170.0
   SOURCES ${headers} ${sources}
 )
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23) # <--- use C++23 standard
