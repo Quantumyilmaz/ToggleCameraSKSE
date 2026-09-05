@@ -54,10 +54,12 @@ void MCP::RenderDeviceKeyCombo(const std::string& title, const std::string& labe
     }
 }
 
-void MCP::RenderZoomLvL(const std::string& title, const std::string& label, Feature& feat) {
+void MCP::RenderZoomLvL(const std::string& title, const std::string& label, Feature& feat, bool show_instant) {
     RenderCheckBox(title + label, "FixZoom", feat.fix_zoom.enabled);
-    ImGuiMCP::SameLine();
-    ImGuiMCP::Checkbox((std::string("Instant Zoom") + "##" + title + label).c_str(), &feat.fix_zoom.instant);
+    if (show_instant) {
+        ImGuiMCP::SameLine();
+        ImGuiMCP::Checkbox((std::string("Instant Zoom") + "##" + title + label).c_str(), &feat.fix_zoom.instant);
+    }
     ImGuiMCP::SameLine();
     ImGuiMCP::SetNextItemWidth(100);
     float& zoom_lvl = feat.fix_zoom.zoom_lvl;
@@ -167,7 +169,7 @@ void MCP::Dialogue::Render() {
         ImGuiMCP::Checkbox(std::format("DisallowZoomPOVSwitch##{}", title).c_str(),
                            &Modules::Dialogue::DisallowZoomPOVSwitch.enabled);
 
-        RenderZoomLvL("Dialogue", "Toggle", Modules::Dialogue::Toggle);
+        RenderZoomLvL("Dialogue", "Toggle", Modules::Dialogue::Toggle, true);
     }
 }
 
@@ -232,7 +234,7 @@ void MCP::Combat::__Render(Feature& feat, const std::string& title, const std::s
     ImGuiMCP::SameLine();
     ImGuiMCP::Checkbox((std::string("Instant") + "##" + title + label).c_str(), &feat.instant);
     ImGuiMCP::SameLine();
-    RenderZoomLvL(title, label, feat);
+    RenderZoomLvL(title, label, feat, false);
 }
 
 void MCP::Combat::__RenderIgnoreSpell(Feature& combat_magic_feat, const std::string& label, int& selected_delivery) {
@@ -298,7 +300,7 @@ void MCP::Other::Render() {
         ImGuiMCP::SameLine();
         HelpMarker("Default is from 3rd to 1st.");
 
-        RenderZoomLvL("Other", "FixZoom", FixZoom);
+        RenderZoomLvL("Other", "FixZoom", FixZoom, false);
         ImGuiMCP::SameLine();
         HelpMarker("Upon transitioning into 3rd person, the selected zoom level will be applied.");
     }

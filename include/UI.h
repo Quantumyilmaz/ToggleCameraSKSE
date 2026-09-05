@@ -21,7 +21,7 @@ namespace MCP {
     void RenderCheckBox(const std::string& title, const std::string& label, bool& enabled);
     void RenderDeviceKeyCombo(const std::string& title, const std::string& label, bool& enabled, int& selected_device,
                               std::map<int, int>& keymap);
-    void RenderZoomLvL(const std::string& title, const std::string& label, Feature& feat);
+    void RenderZoomLvL(const std::string& title, const std::string& label, Feature& feat, bool show_instant = false);
 
     namespace Dialogue {
         void Render();
