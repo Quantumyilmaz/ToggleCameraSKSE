@@ -22,6 +22,7 @@ enum Purpose {
 struct FixedZoom {
     float zoom_lvl = 0.2f;
     bool enabled = false;
+    bool instant = false;
 };
 
 struct Feature {

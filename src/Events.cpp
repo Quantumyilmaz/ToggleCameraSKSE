@@ -61,6 +61,10 @@ RE::BSEventNotifyControl OurEventSink::ProcessEvent(const RE::MenuOpenCloseEvent
                                                         : thirdPersonState->savedZoomOffset;
         if (playerCamera->IsInThirdPerson()) {
             thirdPersonState->targetZoomOffset = Modules::Dialogue::Toggle.fix_zoom.zoom_lvl;
+
+            if (Modules::Dialogue::Toggle.fix_zoom.instant) {
+                thirdPersonState->currentZoomOffset = Modules::Dialogue::Toggle.fix_zoom.zoom_lvl;
+            }
         }
     }
 
