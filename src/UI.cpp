@@ -57,10 +57,12 @@ void MCP::RenderDeviceKeyCombo(const std::string& title, const std::string& labe
 void MCP::RenderZoomLvL(const std::string& title, const std::string& label, Feature& feat) {
     RenderCheckBox(title + label, "FixZoom", feat.fix_zoom.enabled);
     ImGuiMCP::SameLine();
+    ImGuiMCP::Checkbox((std::string("Instant Zoom") + "##" + title + label).c_str(), &feat.fix_zoom.instant);
+    ImGuiMCP::SameLine();
     ImGuiMCP::SetNextItemWidth(100);
     float& zoom_lvl = feat.fix_zoom.zoom_lvl;
     if (ImGuiMCP::BeginCombo(("##FixZoomValue" + label).c_str(), Utilities::formatFloatToString(zoom_lvl, 1).c_str())) {
-        for (int n = -1; n < 11; ++n) {
+        for (int n = -10; n < 11; ++n) {
             const bool is_selected = std::abs(zoom_lvl - n / 10.f) < 0.0000001f;
             if (ImGuiMCP::Selectable(Utilities::formatFloatToString(n / 10.f, 1).c_str(), is_selected))
                 zoom_lvl = n / 10.f;

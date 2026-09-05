@@ -377,6 +377,7 @@ void Feature::to_json(rapidjson::Value& j, rapidjson::Document::AllocatorType& a
     j.AddMember("keymap", keymap_array, a);
     j.AddMember("fixed_zoom_enabled", fix_zoom.enabled, a);
     j.AddMember("fixed_zoom_lvl", fix_zoom.zoom_lvl, a);
+    j.AddMember("fixed_zoom_instant", fix_zoom.instant, a);
 }
 
 void Feature::from_json(const rapidjson::Value& j) {
@@ -390,4 +391,8 @@ void Feature::from_json(const rapidjson::Value& j) {
     }
     fix_zoom.enabled = j["fixed_zoom_enabled"].GetBool();
     fix_zoom.zoom_lvl = j["fixed_zoom_lvl"].GetFloat();
+    //optional if this new feature doesent exist yet in users config.
+    if (j.HasMember("fixed_zoom_instant")) {
+        fix_zoom.instant = j["fixed_zoom_instant"].GetBool();
+    }
 }
